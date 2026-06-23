@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+  <title>חבר Stores — מפת בתי העסק (קבע + טעמים)</title>
+  <meta name="description" content="מפה ורשימה של כל בתי העסק המכבדים את כרטיסי 'חבר של קבע' ו'חבר טעמים' — עם הוראות שימוש לכל רשת ורשימת סניפים.">
+  <meta name="theme-color" content="#1b3a6b">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./vendor/leaflet.css">
+  <link rel="stylesheet" href="./vendor/MarkerCluster.css">
+  <link rel="stylesheet" href="./vendor/MarkerCluster.Default.css">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="bar">
+      <div class="logo"><span class="triangle"></span>חבר Stores</div>
+      <span class="tagline">קבע + טעמים</span>
+      <label class="search">
+        <span class="i">🔍</span>
+        <input id="q" type="search" placeholder="חיפוש בית עסק, עיר, כתובת או קטגוריה…" autocomplete="off">
+      </label>
+      <span id="source" class="source-badge" title="מקור הנתונים"><span class="dot"></span><span class="txt">טוען…</span></span>
+    </div>
+  </header>
+
+  <div class="filters">
+    <div class="inner" id="filters">
+      <button class="drawer-toggle" id="drawerClose" style="display:none">✕ סגור</button>
+      <button class="chip keva" data-toggle="keva" aria-pressed="true"><span class="swatch" style="background:var(--keva)"></span>חבר קבע</button>
+      <button class="chip teamim" data-toggle="teamim" aria-pressed="true"><span class="swatch" style="background:var(--teamim)"></span>חבר טעמים</button>
+      <button class="chip both" data-toggle="both" aria-pressed="false">מכובד בשניהם</button>
+      <select class="select" id="cat"><option value="">כל הקטגוריות</option></select>
+      <select class="select" id="region"><option value="">כל האזורים</option></select>
+      <select class="select" id="online">
+        <option value="all">פיזי + אונליין</option>
+        <option value="physical">סניפים פיזיים</option>
+        <option value="online">אונליין בלבד</option>
+      </select>
+      <button class="chip" data-toggle="kosher" aria-pressed="false">כשר</button>
+      <button class="chip" data-toggle="access" aria-pressed="false">נגיש</button>
+      <button class="btn-ghost" id="reset">איפוס</button>
+      <span class="count" id="count"></span>
+    </div>
+  </div>
+
+  <button class="drawer-toggle" id="drawerOpen" style="margin:8px 14px">☰ סינון</button>
+  <div class="drawer-backdrop" id="backdrop"></div>
+
+  <main class="layout">
+    <section class="list-pane" id="list" aria-label="רשימת בתי עסק"></section>
+    <section class="map-pane"><div id="map"></div></section>
+  </main>
+
+  <div id="detail-root"></div>
+
+  <script src="./vendor/leaflet.js"></script>
+  <script src="./vendor/leaflet.markercluster.js"></script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

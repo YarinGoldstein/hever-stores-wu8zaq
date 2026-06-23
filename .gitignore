@@ -1,0 +1,10 @@
+raw/
+inspect.mjs
+inspect2.mjs
+build-design.mjs
+design/
+data.pretty.json
+node_modules/
+.DS_Store
+.commitmsg.tmp
+*.tmp
