@@ -8,8 +8,16 @@ const CACHE_KEY = new URL('__hever_data__.json', location.href).href; // valid h
 const LIST_CAP = 500;
 
 let DATA, STORES = [], CHAINS = [], CHAIN_BY_ID = new Map(), filtered = [];
-let map, cluster;
-const state = { q: '', keva: true, teamim: true, both: false, cat: '', region: '', online: 'all', kosher: false, access: false };
+let map, cluster, userMarker = null;
+const state = { q: '', keva: true, teamim: true, cat: '', region: '', online: 'all', kosher: false, access: false, userLoc: null };
+
+const haversineKm = (a, b) => {
+  const R = 6371, toRad = (d) => d * Math.PI / 180;
+  const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+};
+const fmtKm = (km) => km < 1 ? `${Math.round(km * 1000)} מ׳` : `${km.toFixed(km < 10 ? 1 : 0)} ק״מ`;
 
 /* ---------- Data loading: live → device cache → bundled ---------- */
 async function fetchLive() {
@@ -118,7 +126,7 @@ function renderList() {
       <div class="body">
         <p class="title">${esc(s.chain)}</p>
         <div class="sub">${esc(placeLine(s) || '—')}</div>
-        <div class="meta">${badges(s)}</div>
+        <div class="meta">${state.userLoc && isFinite(s._dist) ? `<span class="badge dist">📍 ${fmtKm(s._dist)}</span> ` : ''}${badges(s)}</div>
       </div>
     </div>`).join('');
   const more = filtered.length > LIST_CAP ? `<div class="state">מוצגים ${LIST_CAP} מתוך ${filtered.length.toLocaleString('he-IL')} — צמצמו את הסינון לתוצאות מדויקות יותר.</div>` : '';
@@ -134,7 +142,6 @@ function applyFilters() {
   filtered = STORES.filter((s) => {
     if (s.card === 'keva' && !state.keva) return false;
     if (s.card === 'teamim' && !state.teamim) return false;
-    if (state.both && !s.acceptsBoth) return false;
     if (state.cat && !(s.category || '').includes(state.cat)) return false;
     if (state.region && s.region !== state.region) return false;
     if (state.online === 'online' && !s.online) return false;
@@ -147,6 +154,10 @@ function applyFilters() {
     }
     return true;
   });
+  if (state.userLoc) {
+    for (const s of filtered) s._dist = (s.lat != null) ? haversineKm(state.userLoc, { lat: s.lat, lng: s.lng }) : Infinity;
+    filtered.sort((a, b) => a._dist - b._dist);
+  }
   renderList(); renderMarkers(); updateCount();
 }
 
@@ -221,12 +232,40 @@ function wire() {
   $('#cat').addEventListener('change', (e) => { state.cat = e.target.value; applyFilters(); });
   $('#region').addEventListener('change', (e) => { state.region = e.target.value; applyFilters(); });
   $('#online').addEventListener('change', (e) => { state.online = e.target.value; applyFilters(); });
+  // geolocation: "near me"
+  const nearBtn = $('#near');
+  nearBtn.addEventListener('click', () => {
+    if (state.userLoc) { clearNearMe(); return; }
+    if (!navigator.geolocation) { nearBtn.textContent = 'מיקום לא נתמך'; return; }
+    nearBtn.setAttribute('aria-pressed', 'true'); nearBtn.textContent = '📍 מאתר…';
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        state.userLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        nearBtn.textContent = '📍 קרוב אליי ✕';
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.marker([state.userLoc.lat, state.userLoc.lng], {
+          icon: L.divIcon({ className: '', html: '<div class="me-dot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1000,
+        }).addTo(map).bindPopup('המיקום שלך');
+        map.setView([state.userLoc.lat, state.userLoc.lng], 13);
+        applyFilters();
+      },
+      () => { nearBtn.setAttribute('aria-pressed', 'false'); nearBtn.textContent = 'אין הרשאת מיקום'; setTimeout(() => { nearBtn.textContent = '📍 קרוב אליי'; }, 2500); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  });
+  function clearNearMe() {
+    state.userLoc = null; nearBtn.setAttribute('aria-pressed', 'false'); nearBtn.textContent = '📍 קרוב אליי';
+    if (userMarker) { map.removeLayer(userMarker); userMarker = null; }
+    applyFilters();
+  }
+
   $('#reset').addEventListener('click', () => {
-    Object.assign(state, { q: '', keva: true, teamim: true, both: false, cat: '', region: '', online: 'all', kosher: false, access: false });
+    Object.assign(state, { q: '', keva: true, teamim: true, cat: '', region: '', online: 'all', kosher: false, access: false });
+    clearNearMe();
     $('#q').value = ''; $('#cat').value = ''; $('#region').value = ''; $('#online').value = 'all';
     document.querySelector('[data-toggle="keva"]').setAttribute('aria-pressed', 'true');
     document.querySelector('[data-toggle="teamim"]').setAttribute('aria-pressed', 'true');
-    for (const b of document.querySelectorAll('[data-toggle="both"],[data-toggle="kosher"],[data-toggle="access"]')) b.setAttribute('aria-pressed', 'false');
+    for (const b of document.querySelectorAll('[data-toggle="kosher"],[data-toggle="access"]')) b.setAttribute('aria-pressed', 'false');
     applyFilters();
   });
   // open chain on card / popup click

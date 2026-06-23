@@ -1,5 +1,5 @@
 // Service worker: offline app shell + data. Cache-first for shell, network-first for data.json.
-const VERSION = 'hever-v1';
+const VERSION = 'hever-v2';
 const SHELL = [
   './', './index.html', './style.css', './app.js', './normalize.js', './data.json',
   './manifest.webmanifest', './icon.svg',

@@ -109,6 +109,9 @@ button { font-family: inherit; cursor: pointer; }
 .badge.access { background: #eef7ff; color: #2563a8; }
 .badge.new { background: #ffe9ec; color: #b3203a; }
 .badge.cat { background: #f0f2f5; color: var(--muted); }
+.badge.dist { background: var(--brand); color: #fff; }
+.chip.near[aria-pressed="true"] { background: var(--ok); color: #fff; border-color: transparent; }
+.me-dot { width: 16px; height: 16px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 4px rgba(26,115,232,.3); }
 
 /* ---- Chain detail panel ---- */
 .detail { background: var(--surface); }
@@ -171,9 +174,9 @@ button { font-family: inherit; cursor: pointer; }
     display: inline-flex; align-items: center; gap: 6px; height: var(--tap); padding: 0 14px;
     border-radius: 999px; border: 0; background: var(--brand); color: #fff; font-weight: 700;
   }
-  .filters .inner.collapsible { position: fixed; inset: 0 0 0 auto; width: min(86vw, 340px); background: #fff;
-    flex-direction: column; align-items: stretch; transform: translateX(-105%); transition: .22s; z-index: 1200; overflow-y: auto; box-shadow: var(--shadow); }
-  .filters .inner.collapsible.open { transform: none; }
+  .filters .inner.collapsible { position: fixed; top: 0; bottom: 0; right: 0; left: auto; width: min(86vw, 340px); background: #fff;
+    flex-direction: column; align-items: stretch; gap: 8px; padding: 14px; transform: translateX(100%); transition: transform .22s ease; z-index: 1200; overflow-y: auto; box-shadow: var(--shadow); }
+  .filters .inner.collapsible.open { transform: translateX(0); }
   .filters .inner.collapsible .chip, .filters .inner.collapsible .select { width: 100%; height: var(--tap); }
   .drawer-backdrop.open { display: block; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 1100; }
 }
