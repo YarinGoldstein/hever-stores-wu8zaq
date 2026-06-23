@@ -1,5 +1,7 @@
-// Service worker: offline app shell + data. Cache-first for shell, network-first for data.json.
-const VERSION = 'hever-v2';
+// Service worker: offline support without going stale.
+// Strategy: network-first for the app shell + data (freshness wins, cache is the offline
+// fallback); cache-first only for the immutable vendored libraries.
+const VERSION = 'hever-v3';
 const SHELL = [
   './', './index.html', './style.css', './app.js', './normalize.js', './data.json',
   './manifest.webmanifest', './icon.svg',
@@ -9,28 +11,52 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(VERSION).then((c) => Promise.allSettled(SHELL.map((u) => c.add(u)))).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(VERSION)
+      // bypass HTTP cache so a version bump always pulls fresh files
+      .then((c) => Promise.allSettled(SHELL.map((u) => c.add(new Request(u, { cache: 'reload' })))))
+      .then(() => self.skipWaiting())
+  );
 });
 self.addEventListener('activate', (e) => {
-  e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== VERSION && k.startsWith('hever-v')).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
+  e.waitUntil(
+    caches.keys()
+      .then((ks) => Promise.all(ks.filter((k) => k !== VERSION && k.startsWith('hever-v')).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
 });
+
+const networkFirst = async (req) => {
+  try {
+    const r = await fetch(req);
+    if (r && r.ok) { const cp = r.clone(); caches.open(VERSION).then((c) => c.put(req, cp)); }
+    return r;
+  } catch (e) {
+    const cached = await caches.match(req);
+    if (cached) return cached;
+    throw e;
+  }
+};
+const cacheFirst = async (req) => {
+  const cached = await caches.match(req);
+  if (cached) return cached;
+  const r = await fetch(req);
+  const cp = r.clone(); caches.open(VERSION).then((c) => c.put(req, cp));
+  return r;
+};
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
-  // App-origin requests: cache-first, fall back to network, then cache the result.
   if (url.origin === self.location.origin) {
-    const isData = url.pathname.endsWith('data.json');
-    if (isData) {
-      // network-first for our bundled snapshot
-      e.respondWith(fetch(e.request).then((r) => { const cp = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, cp)); return r; }).catch(() => caches.match(e.request)));
-      return;
-    }
-    e.respondWith(caches.match(e.request).then((c) => c || fetch(e.request).then((r) => { const cp = r.clone(); caches.open(VERSION).then((cc) => cc.put(e.request, cp)); return r; })));
+    // immutable libs: cache-first; everything else (html/js/css/json): network-first
+    e.respondWith(url.pathname.includes('/vendor/') ? cacheFirst(e.request) : networkFirst(e.request));
     return;
   }
-  // Cross-origin (hvr datasets, OSM tiles, fonts): network, fall back to cache if present.
-  e.respondWith(fetch(e.request).then((r) => {
-    if (url.hostname.includes('tile.openstreetmap.org')) { const cp = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, cp)); }
-    return r;
-  }).catch(() => caches.match(e.request)));
+  // cross-origin (hvr datasets, OSM tiles, fonts): network, cache map tiles, fall back to cache
+  e.respondWith(
+    fetch(e.request)
+      .then((r) => { if (url.hostname.includes('tile.openstreetmap.org')) { const cp = r.clone(); caches.open(VERSION).then((c) => c.put(e.request, cp)); } return r; })
+      .catch(() => caches.match(e.request))
+  );
 });
